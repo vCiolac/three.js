@@ -17,7 +17,7 @@ document.body.appendChild(renderer.domElement);
 const scene = new THREE.Scene();
 
 const camera = new THREE.PerspectiveCamera(22, window.innerWidth / window.innerHeight, 1, 1000);
-camera.position.set(140, 30, 60);
+camera.position.set(40, 10, 60);
 
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
@@ -39,80 +39,59 @@ spotLight.castShadow = true;
 spotLight.shadow.bias = -0.0001;
 scene.add(spotLight);
 
-const vertexShader = `
-uniform float time;
-uniform vec2 mouse;
-varying vec2 vUv;
+const birdLoader = new GLTFLoader().setPath('bird/');
+let mixer;
 
-void main() {
-  vUv = uv;
-  vec3 transformed = position + normal * sin(distance(mouse, position.xy) * 10.0 - time * 5.0) * 0.2;
-  gl_Position = projectionMatrix * modelViewMatrix * vec4(transformed, 1.0);
-}
-`;
+birdLoader.load('scene.gltf', (gltf) => {
+  console.log('loading bird model');
+  const bird = gltf.scene;
+  scene.add(bird);
 
-const fragmentShader = `
-varying vec2 vUv;
-uniform sampler2D baseTexture;
-
-void main() {
-  gl_FragColor = texture2D(baseTexture, vUv);
-}
-`;
-
-const loader = new GLTFLoader().setPath('cow/');
-loader.load('scene.gltf', (gltf) => {
-  console.log('loading model');
-  const mesh = gltf.scene;
-
-  mesh.traverse((child) => {
+  bird.traverse((child) => {
     if (child.isMesh) {
       child.castShadow = true;
       child.receiveShadow = true;
-
-      child.material = new THREE.ShaderMaterial({
-        vertexShader,
-        fragmentShader,
-        uniforms: {
-          time: { value: 0 },
-          mouse: { value: new THREE.Vector2() },
-          baseTexture: { value: child.material.map }
-        }
-      });
     }
   });
 
-  mesh.position.set(0, -8, 0);
-  scene.add(mesh);
+  if (gltf.animations && gltf.animations.length) {
+    mixer = new THREE.AnimationMixer(bird);
+    gltf.animations.forEach((clip) => {
+      mixer.clipAction(clip).play();
+    });
+  }
+
+  bird.position.set(0, -6, 0);
 
   document.getElementById('progress-container').style.display = 'none';
 }, (xhr) => {
-  console.log(`loading ${xhr.loaded / xhr.total * 100}%`);
+  console.log(`loading bird ${xhr.loaded / xhr.total * 100}%`);
 }, (error) => {
   console.error(error);
 });
 
-const mouse = new THREE.Vector2();
-const raycaster = new THREE.Raycaster();
-let isMouseOverCow = false;
-let prevMousePosition = new THREE.Vector2();
-let mouseMoved = false;
+const backgroundLoader = new GLTFLoader().setPath('remains/');
+backgroundLoader.load('scene.gltf', (gltf) => {
+  console.log('loading background model');
+  const background = gltf.scene;
+  scene.add(background);
 
-window.addEventListener('mousemove', (event) => {
-  const newMousePosition = new THREE.Vector2(
-    (event.clientX / window.innerWidth) * 2 - 1,
-    - (event.clientY / window.innerHeight) * 2 + 1
-  );
+  background.traverse((child) => {
+    if (child.isMesh) {
+      child.castShadow = true;
+      child.receiveShadow = true;
+    }
+  });
 
-  mouseMoved = !newMousePosition.equals(prevMousePosition);
-  prevMousePosition.copy(newMousePosition);
+  background.scale.set(4, 4, 4);
+  background.position.set(0, -7, -10);
+  background.rotation.y = 180 * (Math.PI / 180);
 
-  mouse.x = newMousePosition.x;
-  mouse.y = newMousePosition.y;
 
-  raycaster.setFromCamera(mouse, camera);
-  const intersects = raycaster.intersectObjects(scene.children, true);
-  isMouseOverCow = intersects.length > 0;
+}, (xhr) => {
+  console.log(`loading background ${xhr.loaded / xhr.total * 100}%`);
+}, (error) => {
+  console.error(error);
 });
 
 window.addEventListener('resize', () => {
@@ -124,14 +103,8 @@ window.addEventListener('resize', () => {
 function animate() {
   requestAnimationFrame(animate);
 
-  // Update the time uniform for the shader only if the mouse is moving over the cow
-  if (isMouseOverCow && mouseMoved) {
-    scene.traverse((child) => {
-      if (child.isMesh && child.material.uniforms) {
-        child.material.uniforms.time.value += 0.05;
-        child.material.uniforms.mouse.value = mouse;
-      }
-    });
+  if (mixer) {
+    mixer.update(0.01);  // Atualiza a animação
   }
 
   controls.update();

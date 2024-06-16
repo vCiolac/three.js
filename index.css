@@ -1,12 +1,6 @@
-/* @font-face {
-  font-family: 'SF Distant Galaxy';
-  src: local('SF Distant Galaxy'), url(fonts/SF\ Distant\ Galaxy.ttf), format('ttf');
-} */
-
 body {
   background-color: black;
   margin: 0;
-  /* font-family: 'SF Distant Galaxy'; */
 }
 
 #heading {
@@ -25,6 +19,12 @@ body {
 h1 {
   color: rgb(215, 215, 215);
   font-size: 4em;
+  margin: 0px;
+  font-weight: 100;
+}
+
+p {
+  color: rgb(215, 215, 215);
   margin: 0px;
   font-weight: 100;
 }
